@@ -10,7 +10,6 @@ macro(project_set_environment)
   include(GNUInstallDirs)
 
   option(ENABLE_ANALYZER "Build with -fanalyzer" ON)
-  option(ENABLE_ASAN "Link with ASAN" ON)
 
   add_compile_options(
     -Wshadow -Wall -Wextra -pedantic -D_DEFAULT_SOURCE
@@ -21,14 +20,8 @@ macro(project_set_environment)
   endif()
 
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    if (ENABLE_ASAN)
-      link_libraries(asan)
-      add_compile_options(-fsanitize=address)
-    endif()
     add_compile_options(
       -Og -g3 -DDEBUG -fno-omit-frame-pointer
-      $<IF:$<BOOL:${ENABLE_ANALYZER}>,-fanalyzer,>
-      $<IF:$<BOOL:${ENABLE_ANALYZER}>,-Wno-analyzer-malloc-leak,>
     )
   elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_compile_options(-O3 -DNDEBUG -g -Werror)
@@ -38,8 +31,6 @@ macro(project_set_environment)
     link_libraries(tsan)
     add_compile_options(
       -Og -g3 -DDEBUG -fsanitize=thread -fno-omit-frame-pointer
-      $<IF:$<BOOL:${ENABLE_ANALYZER}>,-fanalyzer,>
-      $<IF:$<BOOL:${ENABLE_ANALYZER}>,-Wno-analyzer-malloc-leak,>
     )
   endif()
 endmacro()
