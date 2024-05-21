@@ -1,0 +1,16 @@
+
+# local dependency confifiguration 
+dependencies.json
+
+# Temporary folders for building and/or testing
+__pycache__
+*.swp
+.cache
+
+# eclipse project files and folders
+.profile
+.cprofile
+.settings
+.asciidoctorconfig.adoc
+**/build
+compile_commands.json
