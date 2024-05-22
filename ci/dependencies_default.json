@@ -1,6 +1,10 @@
 {
 	"elos": {
-		"url":  "https://github.com/Elektrobit/elos.git"
+		"url":  "https://github.com/Elektrobit/elos.git",
+		"cmake_opts": [
+			"-DELOS_BUILD_DEFAULTS=off",
+			"-DELOS_DAEMON=on"
+		]
 	},
 	"safu": {
 		"url":  "https://github.com/Elektrobit/safu.git"
