@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: MIT
-find_package(libelosplugin 0.58.4 REQUIRED)
-find_package(safu 0.54.0 REQUIRED)
-find_package(samconf 0.53.1 REQUIRED)
+cmake_minimum_required(VERSION 3.21)
 
 set(DUMMY_CLIENT_VERSION_MAJOR 0)
 set(DUMMY_CLIENT_VERSION_MINOR 1)
@@ -18,6 +16,12 @@ project(
   LANGUAGES C
 )
 
+set(ELOSD_CLIENT_PATH ${CMAKE_INSTALL_FULL_LIBDIR}/elos/client)
+
+find_package(libelosplugin 0.58.4 REQUIRED)
+find_package(safu 0.54.0 REQUIRED)
+find_package(samconf 0.53.1 REQUIRED)
+
 add_library(
   client_dummy SHARED
   private/dummy.c
@@ -29,13 +33,14 @@ set_target_properties(
   PROPERTIES
   SOVERSION ${DUMMY_CLIENT_VERSION_MAJOR}
     VERSION ${DUMMY_CLIENT_VERSION}
-  )
+)
 
 target_link_libraries(
   client_dummy
   PUBLIC
     elos::libelosplugin
     samconf::samconf
+    safu::safu
 )
 
 target_include_directories(

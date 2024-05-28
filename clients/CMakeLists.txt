@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: MIT
-
-set(ELOSD_CLIENT_PATH ${CMAKE_INSTALL_FULL_LIBDIR}/elos/client)
+cmake_minimum_required(VERSION 3.21)
 
 add_subdirectory(dummy)
