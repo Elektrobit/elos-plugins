@@ -113,7 +113,7 @@ def single_install(dependency, config, args):
         print(f"FAILED to build {dependency}")
         return False
 
-    cmd = ["sudo"] if args.global_install else []
+    cmd = ["sudo"] if args.global_install and os.getuid() != 0 else []
     cmd.extend(["ninja", "-C", config["build"], "install"])
     cp = run_cmd(cmd)
     if cp.returncode != 0:
