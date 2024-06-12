@@ -1,0 +1,92 @@
+
+variables:
+  SOURCES_URI: "https://github.com/Elektrobit/"
+  ELOS_DEPENDENCY_CONFIG: "ci/dependencies_emlix.json" 
+
+stages:
+  - build
+  - test
+
+workflow:
+  auto_cancel:
+    on_new_commit: interruptible
+
+default:
+  image: ubuntu:jammy
+  interruptible: true
+  before_script:
+    - echo -e "\e[0Ksection_start:`date +%s`:install_packages\r\e[0KInstall packages"
+    - apt-get update
+    - apt-get install -y
+      build-essential
+      cmake
+      git
+      libesmtp-dev
+      libjson-c-dev
+      liblog4c-dev
+      libmnl-dev
+      libsqlite3-dev
+      libssl-dev
+      net-tools
+      ninja-build
+      pkg-config
+      python3
+    - echo -e "\e[0Ksection_end:`date +%s`:install_packages\r\e[0K"
+    - env | sort
+      
+build-dependencies:
+  stage: build
+  needs: []
+  script:
+    - ci/install_deps.py --no-tests --no-mocks
+  artifacts:
+    paths:
+      - build/deps/
+    exclude:
+      - build/deps/src/
+      - build/deps/build/
+
+build-plugins-release:
+  stage: build
+  needs:
+    - build-dependencies
+  script:
+    - ci/build.sh Release
+  artifacts:
+    paths:
+      - build/Release/dist/
+
+build-plugins-debug:
+  stage: build
+  needs:
+    - build-dependencies
+  script:
+    - ci/build.sh Debug
+  artifacts:
+    paths:
+      - build/Debug/dist/
+
+smoketests-release:
+  stage: test
+  needs:
+    - build-dependencies
+    - build-plugins-release
+  script:
+    - ci/run_smoketests.sh Release
+  artifacts:
+    paths:
+      - build/Release/result/smoketest_results
+
+smoketests-debug:
+  stage: test
+  needs:
+    - build-dependencies
+    - build-plugins-debug
+  script:
+    - ci/run_smoketests.sh Debug
+  artifacts:
+    paths:
+      - build/Debug/result/smoketest_results
+
+
+
