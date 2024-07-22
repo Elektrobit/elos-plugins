@@ -13,7 +13,7 @@ CHECKOUT_PATH = path.join(BASE_DIR, "build/deps/src")
 BUILD_PATH = path.join(BASE_DIR, "build/deps/build")
 INSTALL_PATH = path.join(BASE_DIR, "build/deps")
 DEFAULT_USER_CONFIG = path.join(BASE_DIR, "dependencies.json")
-TEST_DEPS = ["cmocka_extensions", "cmocka_mocks"]
+TEST_DEPS = []
 DEPS = ["safu", "samconf", "elos"]
 
 

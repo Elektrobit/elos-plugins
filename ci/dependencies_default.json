@@ -3,19 +3,20 @@
 		"url":  "https://github.com/Elektrobit/elos.git",
 		"cmake_opts": [
 			"-DELOS_BUILD_DEFAULTS=off",
+			"-DELOSD_LIBDLT=off",
 			"-DELOS_DAEMON=on"
 		]
 	},
 	"safu": {
-		"url":  "https://github.com/Elektrobit/safu.git"
+		"url":  "https://github.com/Elektrobit/safu.git",
+		"cmake_opts": [
+			"-DSAFU_BUILD_DEFAULTS=off"
+		]
 	},
 	"samconf": {
-		"url": "https://github.com/Elektrobit/samconf.git"
-	},
-	"cmocka_mocks": {
-		"url": "https://github.com/Elektrobit/cmocka_mocks.git"
-	},
-	"cmocka_extensions": {
-		"url": "https://github.com/Elektrobit/cmocka_extensions.git"
+		"url": "https://github.com/Elektrobit/samconf.git",
+		"cmake_opts": [
+			"-DSAMCONF_BUILD_DEFAULTS=off"
+		]
 	}
 }

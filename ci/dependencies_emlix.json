@@ -10,13 +10,5 @@
     "samconf": {
         "url": "${SOURCES_URI}/samconf.git",
         "branch": "integration"
-    },
-    "cmocka_mocks": {
-        "url": "${SOURCES_URI}/cmocka_mocks.git",
-        "branch": "integration"
-    },
-    "cmocka_extensions": {
-        "url": "${SOURCES_URI}/cmocka_extensions.git",
-        "branch": "integration"
     }
 }
