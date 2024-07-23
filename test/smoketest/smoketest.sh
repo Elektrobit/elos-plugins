@@ -126,6 +126,53 @@ smoketest_client_dummy() {
     return $TEST_RESULT
 }
 
+smoketest_backend_dummy() {
+    prepare_env "backend_dummy"
+
+    LOG_ELOSD="$RESULT_DIR/elosd.log"
+
+    log "Starting elosd"
+    elosd > $LOG_ELOSD 2>&1 &
+    ELOSD_PID=$!
+
+    wait_for_elosd_socket
+
+    log "Stop elosd ($ELOSD_PID)"
+    kill $ELOSD_PID > /dev/null 2>&1
+    wait $ELOSD_PID > /dev/null 2>&1
+
+    TEST_RESULT=0
+    log "check if Dummy Backend Plugin was loaded"
+    grep -q "DummyBackend.* has been loaded" "${LOG_ELOSD}"
+    if [ $? -ne 0 ]; then
+        log_err "couldn't load DummyBackend Plugin"
+        TEST_RESULT=1
+    fi
+
+    log "check if Dummy Backend Plugin was started"
+    grep -q "DummyBackend.* has been started" "${LOG_ELOSD}"
+    if [ $? -ne 0 ]; then
+        log_err "couldn't start Dummy Backend Plugin"
+        TEST_RESULT=1
+    fi
+
+    log "check if Dummy Backend Plugin was stopped"
+    grep -q "Stopping Plugin .*DummyBackend" "${LOG_ELOSD}"
+    if [ $? -ne 0 ]; then
+        log_err "couldn't stop Dummy Backend Plugin"
+        TEST_RESULT=1
+    fi
+
+    log "check if Dummy Client Plugin was unloaded"
+    grep -q "Unloading Plugin.*DummyBackend" "${LOG_ELOSD}"
+    if [ $? -ne 0 ]; then
+        log_err "couldn't unload Dummy Backend Plugin"
+        TEST_RESULT=1
+    fi
+
+    return $TEST_RESULT
+}
+
 # $1 - test name
 # $2 - (optional) test function - valid options are [test_expect_success|test_expect_failure|test_expect_unstable]
 call_test() {
@@ -171,5 +218,6 @@ call_test() {
 
 FAILED_TESTS=0
 call_test "client_dummy" || FAILED_TESTS=$((FAILED_TESTS+1))
+call_test "backend_dummy" || FAILED_TESTS=$((FAILED_TESTS+1))
 
 exit ${FAILED_TESTS}

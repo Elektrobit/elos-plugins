@@ -4,7 +4,10 @@
 		"cmake_opts": [
 			"-DELOS_BUILD_DEFAULTS=off",
 			"-DELOSD_LIBDLT=off",
-			"-DELOS_DAEMON=on"
+			"-DELOS_DAEMON=on",
+			"-DELOS_PLUGINS=on",
+			"-DELOSD_EVENTLOGGING_BACKEND_SQL=off",
+			"-DELOSD_EVENTLOGGING_BACKEND_DLT=off"
 		]
 	},
 	"safu": {
