@@ -66,7 +66,7 @@ wait_for_file() {
 
 wait_for_elosd_socket() {
     local i=0
-    ${NETSTAT} -l | grep 54323 | grep tcp > /dev/null 2>&1
+    ${NETSTAT} -l | grep "${ELOSD_PORT}" | grep tcp > /dev/null 2>&1
     while [ $? -ne 0 ]
     do
       i=$((i+1))
@@ -173,6 +173,52 @@ smoketest_backend_dummy() {
     return $TEST_RESULT
 }
 
+smoketest_cpp_backend_dummy() {
+    prepare_env "backend_dummy"
+
+    LOG_ELOSD="$RESULT_DIR/elosd.log"
+
+    log "Starting elosd"
+    elosd > $LOG_ELOSD 2>&1 &
+    ELOSD_PID=$!
+
+    wait_for_elosd_socket
+
+    log "Stop elosd ($ELOSD_PID)"
+    kill $ELOSD_PID > /dev/null 2>&1
+    wait $ELOSD_PID > /dev/null 2>&1
+
+    TEST_RESULT=0
+    log "check if Dummy C++ Backend Plugin was loaded"
+    grep -q "CPlusPlusBackend.* has been loaded" "${LOG_ELOSD}"
+    if [ $? -ne 0 ]; then
+        log_err "couldn't load Dummy C++ Backend Plugin"
+        TEST_RESULT=1
+    fi
+
+    log "check if Dummy C++ Backend Plugin was started"
+    grep -q "CPlusPlusBackend.* has been started" "${LOG_ELOSD}"
+    if [ $? -ne 0 ]; then
+        log_err "couldn't start Dummy C++ Backend Plugin"
+        TEST_RESULT=1
+    fi
+
+    log "check if Dummy C++ Backend Plugin was stopped"
+    grep -q "Stopping Plugin .*CPlusPlusBackend" "${LOG_ELOSD}"
+    if [ $? -ne 0 ]; then
+        log_err "couldn't stop Dummy C++ Backend Plugin"
+        TEST_RESULT=1
+    fi
+
+    log "check if Dummy C++ Backend Plugin was unloaded"
+    grep -q "Unloading Plugin.*CPlusPlusBackend" "${LOG_ELOSD}"
+    if [ $? -ne 0 ]; then
+        log_err "couldn't unload Dummy C++ Backend Plugin"
+        TEST_RESULT=1
+    fi
+
+    return $TEST_RESULT
+}
 # $1 - test name
 # $2 - (optional) test function - valid options are [test_expect_success|test_expect_failure|test_expect_unstable]
 call_test() {
@@ -219,5 +265,6 @@ call_test() {
 FAILED_TESTS=0
 call_test "client_dummy" || FAILED_TESTS=$((FAILED_TESTS+1))
 call_test "backend_dummy" || FAILED_TESTS=$((FAILED_TESTS+1))
+call_test "cpp_backend_dummy" || FAILED_TESTS=$((FAILED_TESTS+1))
 
 exit ${FAILED_TESTS}

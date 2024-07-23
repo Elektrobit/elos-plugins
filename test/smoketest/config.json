@@ -49,6 +49,13 @@
                         "Filter": [
                             "1 1 EQ"
                         ]
+                    },
+                    "CPlusPlusBackend": {
+                        "File": "backend_ring_buffer.so",
+                        "Run": "always",
+                        "Filter": [
+                            "1 1 EQ"
+                        ]
                     }
                 }
             },
