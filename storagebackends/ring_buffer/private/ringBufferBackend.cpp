@@ -1,0 +1,171 @@
+// SPDX-License-Identifier: MIT
+
+#include <elos/event/event_types.h>
+#include <elos/libelosplugin/libelosplugin.h>
+#include <safu/common.h>
+#include <safu/log.h>
+#include <safu/mutex.h>
+#include <sys/eventfd.h>
+#include <unistd.h>
+
+#include <elos/eventfilter/eventfilter.h>
+#include <elos/libelosplugin/StorageBackend_types.h>
+
+static safuResultE_t _backendStart(elosStorageBackend_t *backend) {
+    safuResultE_t result = SAFU_RESULT_FAILED;
+
+    if (backend == nullptr) {
+        safuLogErr("Null parameter given");
+    } else {
+        result = SAFU_RESULT_OK;
+    }
+    return result;
+}
+
+static safuResultE_t _backendPersist(elosStorageBackend_t *backend, const elosEvent_t *event) {
+    safuResultE_t result = SAFU_RESULT_FAILED;
+
+    if ((backend == nullptr) || (event == nullptr)) {
+        safuLogErr("Null parameter given");
+    } else {
+        char *eventStr = nullptr;
+
+        result = elosEventSerialize(&eventStr, event);
+        if (result != SAFU_RESULT_OK) {
+            safuLogErr("Event serialization failed");
+        } else {
+            safuLogDebugF("Backend '%s' is persisting Event: %s", backend->name, eventStr);
+            safuLogDebug("I am just a dummy backend and can't persist anything.");
+            delete eventStr;
+        }
+    }
+    return result;
+}
+
+static safuResultE_t _backendFindEvent(elosStorageBackend_t *backend, elosRpnFilter_t *filter, safuVec_t *events) {
+    safuResultE_t result = SAFU_RESULT_FAILED;
+
+    if ((backend == nullptr) || (filter == nullptr) || (events == nullptr)) {
+        safuLogErr("Null parameter given");
+    } else {
+        safuLogDebug("I am just a dummy backend and can't remember anything.");
+        elosRpnFilterResultE_t filterResult;
+
+        elosEvent_t event = elosEvent_t();
+        filterResult = elosEventFilterExecute(filter, nullptr, &event);
+        if (filterResult == RPNFILTER_RESULT_MATCH || filterResult == RPNFILTER_RESULT_NO_MATCH) {
+            result = SAFU_RESULT_OK;
+        } else {
+            safuLogErr("elosEventFilterExecute failed");
+            safuLogDebugF("Free Event: RPN filter result is: %d", filterResult);
+            result = SAFU_RESULT_FAILED;
+        }
+    }
+    return result;
+}
+
+static safuResultE_t _backendShutdown(elosStorageBackend_t *backend) {
+    safuResultE_t result = SAFU_RESULT_FAILED;
+
+    if (backend == nullptr) {
+        safuLogErr("Null parameter given");
+    } else {
+        result = SAFU_RESULT_OK;
+    }
+    return result;
+}
+
+static safuResultE_t _pluginLoad(elosPlugin_t *plugin) {
+    safuResultE_t result = SAFU_RESULT_FAILED;
+
+    if (plugin == nullptr) {
+        safuLogErr("Null parameter given");
+    } else {
+        elosStorageBackend_t *newBackend = new (std::nothrow) elosStorageBackend_t;
+        if (newBackend == nullptr) {
+            safuLogErr("Memory allocation failed");
+        } else if ((plugin->config == nullptr) || (plugin->config->key == nullptr)) {
+            safuLogErr("Given configuration is nullptr or has .key set to nullptr");
+        } else {
+            newBackend->name = plugin->config->key;
+            newBackend->backendData = nullptr;
+            newBackend->filter = safuVec_t();
+            newBackend->start = &_backendStart;
+            newBackend->persist = &_backendPersist;
+            newBackend->findEvent = &_backendFindEvent;
+            newBackend->shutdown = &_backendShutdown;
+
+            plugin->data = newBackend;
+
+            safuLogDebugF("Plugin '%s' has been loaded", plugin->config->key);
+            result = SAFU_RESULT_OK;
+        }
+    }
+    return result;
+}
+
+static safuResultE_t _pluginStart(elosPlugin_t *plugin) {
+    safuResultE_t result = SAFU_RESULT_FAILED;
+
+    if (plugin == nullptr) {
+        safuLogErr("Null parameter given");
+    } else {
+        safuLogDebugF("Plugin '%s' has been started", plugin->config->key);
+
+        result = elosPluginReportAsStarted(plugin);
+        if (result == SAFU_RESULT_FAILED) {
+            safuLogErr("elosPluginReportAsStarted failed");
+        } else {
+            result = elosPluginStopTriggerWait(plugin);
+            if (result == SAFU_RESULT_FAILED) {
+                safuLogErr("elosPluginStopTriggerWait failed");
+            }
+        }
+    }
+
+    return result;
+}
+
+static safuResultE_t _pluginStop(elosPlugin_t *plugin) {
+    safuResultE_t result = SAFU_RESULT_FAILED;
+
+    if (plugin == nullptr) {
+        safuLogErr("Null parameter given");
+    } else {
+        safuLogDebugF("Stopping Plugin '%s'", plugin->config->key);
+
+        result = elosPluginStopTriggerWrite(plugin);
+        if (result == SAFU_RESULT_FAILED) {
+            safuLogErr("elosPluginStopTriggerWrite failed");
+        }
+    }
+
+    return result;
+}
+
+static safuResultE_t _pluginUnload(elosPlugin_t *plugin) {
+    safuResultE_t result = SAFU_RESULT_FAILED;
+
+    if (plugin == nullptr) {
+        safuLogErr("Null parameter given");
+    } else {
+        safuLogDebugF("Unloading Plugin '%s'", plugin->config->key);
+        auto *backendValues = (elosStorageBackend_t *)plugin->data;
+        delete backendValues;
+        result = SAFU_RESULT_OK;
+    }
+
+    return result;
+}
+
+__BEGIN_DECLS
+
+elosPluginConfig_t elosPluginConfig = {
+    PLUGIN_TYPE_STORAGEBACKEND,
+    _pluginLoad,
+    _pluginUnload,
+    _pluginStart,
+    _pluginStop,
+};
+
+__END_DECLS
