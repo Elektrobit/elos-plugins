@@ -173,8 +173,8 @@ smoketest_backend_dummy() {
     return $TEST_RESULT
 }
 
-smoketest_cpp_backend_dummy() {
-    prepare_env "backend_dummy"
+smoketest_cpp_in_memory_backend() {
+    prepare_env "cpp_in_memory_backend"
 
     LOG_ELOSD="$RESULT_DIR/elosd.log"
 
@@ -184,36 +184,77 @@ smoketest_cpp_backend_dummy() {
 
     wait_for_elosd_socket
 
+    {
+        elosc -P "${ELOSD_PORT}" -p '{"messageCode": 1001, "severity": 4, "payload": "1. Event"}'
+        elosc -P "${ELOSD_PORT}" -p '{"messageCode": 1001, "severity": 4, "payload": "2. Event"}'
+        elosc -P "${ELOSD_PORT}" -p '{"messageCode": 1001, "severity": 4, "payload": "3. Event"}'
+        elosc -P "${ELOSD_PORT}" -p '{"messageCode": 1001, "severity": 4, "payload": "4. Event"}'
+        elosc -P "${ELOSD_PORT}" -p '{"messageCode": 1002, "severity": 4, "payload": "5. Event"}'
+        elosc -P "${ELOSD_PORT}" -p '{"messageCode": 1001, "severity": 4, "payload": "6. Event"}'
+    } >> "${RESULT_DIR}/event.log" 2>&1
+
+    ALL_FETCHED="${RESULT_DIR}/fetch_all.reply"
+    elosc -P "${ELOSD_PORT}" -f "1 1 EQ" >> "${ALL_FETCHED}" 2>&1
+    FILTERED_FETCH="${RESULT_DIR}/fetch_filtered.reply"
+    elosc -P "${ELOSD_PORT}" -f ".event.messageCode 1002 EQ" >> "${FILTERED_FETCH}" 2>&1
+
+
     log "Stop elosd ($ELOSD_PID)"
     kill $ELOSD_PID > /dev/null 2>&1
     wait $ELOSD_PID > /dev/null 2>&1
-
     TEST_RESULT=0
-    log "check if Dummy C++ Backend Plugin was loaded"
+
+    log "check if C++ Backend Plugin was loaded"
     grep -q "CPlusPlusBackend.* has been loaded" "${LOG_ELOSD}"
     if [ $? -ne 0 ]; then
-        log_err "couldn't load Dummy C++ Backend Plugin"
+        log_err "couldn't load C++ Backend Plugin"
         TEST_RESULT=1
     fi
 
-    log "check if Dummy C++ Backend Plugin was started"
+    log "check if C++ Backend Plugin was started"
     grep -q "CPlusPlusBackend.* has been started" "${LOG_ELOSD}"
     if [ $? -ne 0 ]; then
-        log_err "couldn't start Dummy C++ Backend Plugin"
+        log_err "couldn't start C++ Backend Plugin"
         TEST_RESULT=1
     fi
 
-    log "check if Dummy C++ Backend Plugin was stopped"
+    log "check if C++ Backend Plugin was stopped"
     grep -q "Stopping Plugin .*CPlusPlusBackend" "${LOG_ELOSD}"
     if [ $? -ne 0 ]; then
-        log_err "couldn't stop Dummy C++ Backend Plugin"
+        log_err "couldn't stop C++ Backend Plugin"
         TEST_RESULT=1
     fi
 
-    log "check if Dummy C++ Backend Plugin was unloaded"
+    log "check if C++ Backend Plugin was unloaded"
     grep -q "Unloading Plugin.*CPlusPlusBackend" "${LOG_ELOSD}"
     if [ $? -ne 0 ]; then
-        log_err "couldn't unload Dummy C++ Backend Plugin"
+        log_err "couldn't unload C++ Backend Plugin"
+        TEST_RESULT=1
+    fi
+
+    log "check if messages got returned"
+    payloads=('"payload":"1. Event"' '"payload":"2. Event"'
+        '"payload":"3. Event"' '"payload":"4. Event"'
+        '"payload":"5. Event"' '"payload":"6. Event"')
+    match_count=0
+    for payload in "${payloads[@]}"; do
+        if grep -q "${payload}" "${ALL_FETCHED}"; then
+            ((match_count=match_count+1))
+        fi
+    done
+    ELOSBACKEND_RINGBUFFER_SIZE=5 # is not read from the environment by the plugin needs to be the same as config
+    if [[ ${ELOSBACKEND_RINGBUFFER_SIZE} -ne ${match_count} ]]; then
+        log_err "Wrong number of events fetched ${match_count}/${ELOSBACKEND_RINGBUFFER_SIZE}!"
+        TEST_RESULT=1
+    fi
+
+    log "Test if fetch filter work"
+    if ! grep -q '"messageCode":1002' "${FILTERED_FETCH}"; then
+        log_err "couldn't find messageCode that was filtered for"
+        TEST_RESULT=1
+    fi
+    if grep -q '"messageCode":1001' "${FILTERED_FETCH}"; then
+        log_err "messageCode that wasn't filtered for was found"
         TEST_RESULT=1
     fi
 
@@ -265,6 +306,6 @@ call_test() {
 FAILED_TESTS=0
 call_test "client_dummy" || FAILED_TESTS=$((FAILED_TESTS+1))
 call_test "backend_dummy" || FAILED_TESTS=$((FAILED_TESTS+1))
-call_test "cpp_backend_dummy" || FAILED_TESTS=$((FAILED_TESTS+1))
+call_test "cpp_in_memory_backend" || FAILED_TESTS=$((FAILED_TESTS+1))
 
 exit ${FAILED_TESTS}
