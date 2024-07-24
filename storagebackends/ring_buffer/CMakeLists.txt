@@ -9,7 +9,7 @@ set(RINGBUF_BACKEND_VERSION
 
 project(
   cpp-ring-buffer-backend
-  DESCRIPTION "a dummy backend plugin examples for elos"
+  DESCRIPTION "An in memory ring buffer storage backend plugin for elos written in C++"
   VERSION ${RINGBUF_BACKEND_VERSION}
   LANGUAGES CXX)
 
@@ -21,7 +21,7 @@ find_package(libelosplugin 0.58.4 REQUIRED)
 
 add_library(backend_ring_buffer
   SHARED private/ringBufferBackend.cpp
-         private/buffer.cpp)
+         private/EventBuffer.cpp)
 
 set_target_properties(backend_ring_buffer PROPERTIES PREFIX "")
 set_target_properties(backend_ring_buffer
