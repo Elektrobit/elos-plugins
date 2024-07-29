@@ -5,6 +5,7 @@
 #include <elos/event/event.h>
 #include <elos/eventfilter/eventfilter.h>
 #include <elos/eventfilter/eventfilter_types.h>
+#include <new>
 #include <safu/log.h>
 #include <safu/result.h>
 #include <safu/vector.h>
@@ -67,15 +68,26 @@ safuResultE_t EventBuffer::findEvents(const elosRpnFilter_t &filter,
         elosRpnFilterResultE_t filterResult;
         filterResult = elosEventFilterExecute(&filter, nullptr, &this->buffer[idx]);
         if (filterResult == RPNFILTER_RESULT_MATCH) {
-            auto *event = new elosEvent_t();
-            elosEventDeepCopy(event, &this->buffer[idx]);
-            safuVecPush(&eventList, event);
+            auto *event = new (std::nothrow) elosEvent_t();
+            if (event == nullptr) {
+                safuLogErr("failed to allocate event for fetch api call");
+                result = SAFU_RESULT_FAILED;
+            }
+            if (result == SAFU_RESULT_OK) {
+                result = elosEventDeepCopy(event, &this->buffer[idx]);
+                if (result != SAFU_RESULT_OK) {
+                    safuLogErr("failed to copy event for fetch api call");
+                } else if (safuVecPush(&eventList, event) != 0) {
+                    result = SAFU_RESULT_FAILED;
+                    safuLogErr("failed to add requested event to retun buffer");
+                }
+            }
         } else if (filterResult == RPNFILTER_RESULT_ERROR) {
             safuLogErr("Error fetching event from in memory backend!");
             result = SAFU_RESULT_FAILED;
         }
         idx = this->indexIncrement(idx);
-    } while (idx != this->end);
+    } while (idx != this->end && result == SAFU_RESULT_OK);
 
     return result;
 }
