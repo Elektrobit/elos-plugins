@@ -13,7 +13,6 @@
                 ".process.pid 1 EQ"
             ],
             "ClientInputs": {
-                "PluginSearchPath": "/usr/local/lib/elos/client",
                 "Plugins": {
                     "LocalTcpClient": {
                         "File": "client_dummy.so",
@@ -41,7 +40,6 @@
                 }
             },
             "EventLogging": {
-                "PluginSearchPath": "/usr/local/lib/elos/backend",
                 "Plugins": {
                     "DummyBackend": {
                         "File": "backend_dummy.so",
@@ -63,7 +61,6 @@
                 }
             },
             "Scanner": {
-                "PluginSearchPath": "/usr/local/lib/elos/scanner",
                 "Plugins": { },
                 "Shmem": {
                     "ShmemFile": "scanner_shmem",
