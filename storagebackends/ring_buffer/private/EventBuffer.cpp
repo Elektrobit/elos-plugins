@@ -46,14 +46,14 @@ safuResultE_t EventBuffer::pushEvent(const elosEvent_t &event) noexcept {
     result = elosEventDeleteMembers(&this->buffer[this->end]);
     if (result != SAFU_RESULT_OK) {
         safuLogErr("Failed to free event from buffer");
-    }
-    result = elosEventDeepCopy(&this->buffer[this->end], &event);
+    } else {
+        result = elosEventDeepCopy(&this->buffer[this->end], &event);
 
-    if (this->start == this->end) {
-        this->start = this->indexIncrement(this->start);
+        if (this->start == this->end) {
+            this->start = this->indexIncrement(this->start);
+        }
+        this->end = this->indexIncrement(end);
     }
-    this->end = this->indexIncrement(end);
-
     return result;
 }
 safuResultE_t EventBuffer::findEvents(const elosRpnFilter_t &filter,
