@@ -9,7 +9,7 @@ In the elosd configuration under `root/elos/EventLogging/Plugins` add:
 
 ```json
 "CPlusPlusBackend": {
-    "File": "backend_ring_buufer.so",
+    "File": "backend_ring_buffer.so",
     "Run": "always",
     "Filter": [
         "1 1 EQ"
@@ -19,6 +19,9 @@ In the elosd configuration under `root/elos/EventLogging/Plugins` add:
     }
 }
 ```
+
+- `BufferSize`: the number of events to store in the ring buffer.
+    This is not the total amount of memory used for storing the events.
 
 ## Building using cmake and make
 
