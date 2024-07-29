@@ -3,6 +3,7 @@
 #include <elos/event/event.h>
 #include <elos/event/event_types.h>
 #include <elos/libelosplugin/libelosplugin.h>
+#include <new>
 #include <safu/common.h>
 #include <safu/log.h>
 #include <safu/mutex.h>
@@ -73,7 +74,7 @@ static safuResultE_t _backendShutdown(elosStorageBackend_t *backend) {
 }
 
 static safuResultE_t _pluginLoad(elosPlugin_t *plugin) {
-    safuResultE_t result = SAFU_RESULT_FAILED;
+    safuResultE_t result = SAFU_RESULT_OK;
 
     if (plugin == nullptr) {
         safuLogErr("Null parameter given");
@@ -95,15 +96,21 @@ static safuResultE_t _pluginLoad(elosPlugin_t *plugin) {
             size_t elements =
                 samconfConfigGetInt32Or(plugin->config, "Config/BufferSize", 1000);
 
-            newBackend->backendData = new (std::nothrow) EventBuffer(elements);
-            if (newBackend->backendData == nullptr) {
-                safuLogErr("Memory allocation failed");
+            try {
+                newBackend->backendData = new (std::nothrow) EventBuffer(elements);
+            } catch (safuResultE_t err) {
+                result = err;
+                safuLogErr("event buffer initialization failed!");
                 delete newBackend;
-            } else {
+            } catch (std::bad_alloc &_) {
+                result = SAFU_RESULT_FAILED;
+                safuLogErr("allocating event buffer failed!");
+                delete newBackend;
+            }
+            if (result == SAFU_RESULT_OK) {
                 plugin->data = newBackend;
 
                 safuLogDebugF("Plugin '%s' has been loaded", plugin->config->key);
-                result = SAFU_RESULT_OK;
             }
         }
     }
@@ -150,19 +157,24 @@ static safuResultE_t _pluginStop(elosPlugin_t *plugin) {
 }
 
 static safuResultE_t _pluginUnload(elosPlugin_t *plugin) {
-    safuResultE_t result = SAFU_RESULT_FAILED;
+    safuResultE_t result = SAFU_RESULT_OK;
 
     if (plugin == nullptr) {
         safuLogErr("Null parameter given");
     } else {
         safuLogDebugF("Unloading Plugin '%s'", plugin->config->key);
         auto *backendValues = (elosStorageBackend_t *)plugin->data;
-        auto *eventBuffer = (EventBuffer *)backendValues->backendData;
-        delete eventBuffer;
-        delete backendValues;
-        result = SAFU_RESULT_OK;
+        if (backendValues != nullptr) {
+            auto *eventBuffer = (EventBuffer *)backendValues->backendData;
+            try {
+                delete eventBuffer;
+            } catch (safuResultE_t error) {
+                result = error;
+                safuLogErr("Failed to free the event buffer!");
+            }
+            delete backendValues;
+        }
     }
-
     return result;
 }
 

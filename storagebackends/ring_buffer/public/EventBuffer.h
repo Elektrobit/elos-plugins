@@ -14,12 +14,12 @@ class EventBuffer {
 		size_t end;
 		std::unique_ptr<elosEvent_t[]> buffer;
 
-		size_t indexIncrement(size_t idx) const;
+		size_t indexIncrement(size_t idx) const noexcept;
 
 	public:
-		EventBuffer(size_t size);
-		~EventBuffer();
-		safuResultE_t pushEvent(const elosEvent_t *event);
+		EventBuffer(size_t size) noexcept(false);
+		~EventBuffer() noexcept(false);
+		safuResultE_t pushEvent(const elosEvent_t *event) noexcept;
 		safuResultE_t findEvents(const elosRpnFilter_t *filter,
-				safuVec_t *eventList) const;
+				safuVec_t *eventList) const noexcept;
 };
