@@ -95,12 +95,16 @@ static safuResultE_t _pluginLoad(elosPlugin_t *plugin) {
             size_t elements =
                 samconfConfigGetInt32Or(plugin->config, "Config/BufferSize", 1000);
 
-            newBackend->backendData = new EventBuffer(elements);
+            newBackend->backendData = new (std::nothrow) EventBuffer(elements);
+            if (newBackend->backendData == nullptr) {
+                safuLogErr("Memory allocation failed");
+                delete newBackend;
+            } else {
+                plugin->data = newBackend;
 
-            plugin->data = newBackend;
-
-            safuLogDebugF("Plugin '%s' has been loaded", plugin->config->key);
-            result = SAFU_RESULT_OK;
+                safuLogDebugF("Plugin '%s' has been loaded", plugin->config->key);
+                result = SAFU_RESULT_OK;
+            }
         }
     }
     return result;
