@@ -21,7 +21,7 @@ class EventBuffer {
 		~EventBuffer() noexcept(false);
 		EventBuffer(EventBuffer& buff) = delete;
 		EventBuffer(EventBuffer&& buff) = delete;
-		safuResultE_t pushEvent(const elosEvent_t *event) noexcept;
-		safuResultE_t findEvents(const elosRpnFilter_t *filter,
-				safuVec_t *eventList) const noexcept;
+		safuResultE_t pushEvent(const elosEvent_t &event) noexcept;
+		safuResultE_t findEvents(const elosRpnFilter_t &filter,
+				safuVec_t &eventList) const noexcept;
 };

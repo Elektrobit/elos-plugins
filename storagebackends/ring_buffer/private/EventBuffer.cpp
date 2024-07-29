@@ -34,11 +34,11 @@ EventBuffer::~EventBuffer() noexcept(false) {
 size_t EventBuffer::indexIncrement(size_t idx) const noexcept {
     return (idx + 1) % this->size;
 }
-safuResultE_t EventBuffer::pushEvent(const elosEvent_t *event) noexcept {
+safuResultE_t EventBuffer::pushEvent(const elosEvent_t &event) noexcept {
     safuResultE_t result = SAFU_RESULT_OK;
 
     if (SIZE_MAX == this->end) {
-        result = elosEventDeepCopy(&this->buffer[this->start], event);
+        result = elosEventDeepCopy(&this->buffer[this->start], &event);
         this->end = 1;
         return result;
     }
@@ -46,7 +46,7 @@ safuResultE_t EventBuffer::pushEvent(const elosEvent_t *event) noexcept {
     if (result != SAFU_RESULT_OK) {
         safuLogErr("Failed to free event from buffer");
     }
-    result = elosEventDeepCopy(&this->buffer[this->end], event);
+    result = elosEventDeepCopy(&this->buffer[this->end], &event);
 
     if (this->start == this->end) {
         this->start = this->indexIncrement(this->start);
@@ -55,8 +55,8 @@ safuResultE_t EventBuffer::pushEvent(const elosEvent_t *event) noexcept {
 
     return result;
 }
-safuResultE_t EventBuffer::findEvents(const elosRpnFilter_t *filter,
-        safuVec_t *eventList) const noexcept {
+safuResultE_t EventBuffer::findEvents(const elosRpnFilter_t &filter,
+        safuVec_t &eventList) const noexcept {
     safuResultE_t result = SAFU_RESULT_OK;
     if (SIZE_MAX == this->end) {
         safuLogDebug("EventRingBuffer is empty!");
@@ -65,11 +65,11 @@ safuResultE_t EventBuffer::findEvents(const elosRpnFilter_t *filter,
     size_t idx = this->start;
     do {
         elosRpnFilterResultE_t filterResult;
-        filterResult = elosEventFilterExecute(filter, nullptr, &this->buffer[idx]);
+        filterResult = elosEventFilterExecute(&filter, nullptr, &this->buffer[idx]);
         if (filterResult == RPNFILTER_RESULT_MATCH) {
             auto *event = new elosEvent_t();
             elosEventDeepCopy(event, &this->buffer[idx]);
-            safuVecPush(eventList, event);
+            safuVecPush(&eventList, event);
         } else if (filterResult == RPNFILTER_RESULT_ERROR) {
             safuLogErr("Error fetching event from in memory backend!");
             result = SAFU_RESULT_FAILED;

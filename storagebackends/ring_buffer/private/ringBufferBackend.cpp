@@ -37,7 +37,7 @@ static safuResultE_t _backendPersist(elosStorageBackend_t *backend,
         safuLogErr("Null parameter given");
     } else {
         auto *eventBuffer = (EventBuffer *)backend->backendData;
-        result = eventBuffer->pushEvent(event);
+        result = eventBuffer->pushEvent(*event);
         if (result != SAFU_RESULT_OK) {
             safuLogErr("Event serialization failed");
         }
@@ -54,7 +54,7 @@ static safuResultE_t _backendFindEvent(elosStorageBackend_t *backend,
         safuLogErr("Null parameter given");
     } else {
         auto *eventBuffer = (EventBuffer *)backend->backendData;
-        result = eventBuffer->findEvents(filter, events);
+        result = eventBuffer->findEvents(*filter, *events);
         if (result != SAFU_RESULT_OK) {
             safuLogErr("Finding events failed!");
         }
