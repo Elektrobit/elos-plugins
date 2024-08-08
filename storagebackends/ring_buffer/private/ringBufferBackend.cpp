@@ -97,7 +97,7 @@ static safuResultE_t _pluginLoad(elosPlugin_t *plugin) {
                 samconfConfigGetInt32Or(plugin->config, "Config/BufferSize", 1000);
 
             try {
-                newBackend->backendData = new (std::nothrow) EventBuffer(elements);
+                newBackend->backendData = new EventBuffer(elements);
             } catch (safuResultE_t err) {
                 result = err;
                 safuLogErr("event buffer initialization failed!");

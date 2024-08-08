@@ -52,11 +52,11 @@ safuResultE_t EventBuffer::pushEvent(const elosEvent_t &event) noexcept {
         if (this->start == this->end) {
             this->start = this->indexIncrement(this->start);
         }
-        this->end = this->indexIncrement(end);
+        this->end = this->indexIncrement(this->end);
     }
     return result;
 }
-safuResultE_t EventBuffer::findEvents(const elosRpnFilter_t &filter,
+safuResultE_t EventBuffer::findEvents(const elosEventFilter_t &filter,
         safuVec_t &eventList) const noexcept {
     safuResultE_t result = SAFU_RESULT_OK;
     if (SIZE_MAX == this->end) {
@@ -68,17 +68,18 @@ safuResultE_t EventBuffer::findEvents(const elosRpnFilter_t &filter,
         elosRpnFilterResultE_t filterResult;
         filterResult = elosEventFilterExecute(&filter, nullptr, &this->buffer[idx]);
         if (filterResult == RPNFILTER_RESULT_MATCH) {
-            auto *event = new (std::nothrow) elosEvent_t();
-            if (event == nullptr) {
+            elosEvent_t *event = NULL;
+            result = elosEventNew(&event);
+            if (result != SAFU_RESULT_OK) {
                 safuLogErr("failed to allocate event for fetch api call");
-                result = SAFU_RESULT_FAILED;
-            }
-            if (result == SAFU_RESULT_OK) {
+            } else {
                 result = elosEventDeepCopy(event, &this->buffer[idx]);
                 if (result != SAFU_RESULT_OK) {
+                    elosEventDelete(event);
                     safuLogErr("failed to copy event for fetch api call");
                 } else if (safuVecPush(&eventList, event) != 0) {
                     result = SAFU_RESULT_FAILED;
+                    elosEventDelete(event);
                     safuLogErr("failed to add requested event to retun buffer");
                 }
             }
