@@ -74,6 +74,7 @@ smoketests-release:
   script:
     - ci/run_smoketests.sh Release
   artifacts:
+    when: always
     paths:
       - build/Release/result/smoketest_results
 
@@ -85,6 +86,7 @@ smoketests-debug:
   script:
     - ci/run_smoketests.sh Debug
   artifacts:
+    when: always
     paths:
       - build/Debug/result/smoketest_results
 

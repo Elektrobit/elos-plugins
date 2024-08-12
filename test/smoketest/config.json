@@ -13,7 +13,6 @@
                 ".process.pid 1 EQ"
             ],
             "ClientInputs": {
-                "PluginSearchPath": "/usr/local/lib/elos/client",
                 "Plugins": {
                     "LocalTcpClient": {
                         "File": "client_dummy.so",
@@ -41,7 +40,6 @@
                 }
             },
             "EventLogging": {
-                "PluginSearchPath": "/usr/local/lib/elos/backend",
                 "Plugins": {
                     "DummyBackend": {
                         "File": "backend_dummy.so",
@@ -49,11 +47,20 @@
                         "Filter": [
                             "1 1 EQ"
                         ]
+                    },
+                    "CPlusPlusBackend": {
+                        "File": "backend_ring_buffer.so",
+                        "Run": "always",
+                        "Filter": [
+                            "1 1 EQ"
+                        ],
+                        "Config": {
+                            "BufferSize": 5
+                        }
                     }
                 }
             },
             "Scanner": {
-                "PluginSearchPath": "/usr/local/lib/elos/scanner",
                 "Plugins": { },
                 "Shmem": {
                     "ShmemFile": "scanner_shmem",
