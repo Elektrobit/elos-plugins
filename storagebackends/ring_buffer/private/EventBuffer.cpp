@@ -2,6 +2,7 @@
 
 #include "public/EventBuffer.h"
 
+#include <cstdlib>
 #include <elos/event/event.h>
 #include <elos/eventfilter/eventfilter.h>
 #include <elos/eventfilter/eventfilter_types.h>
@@ -75,13 +76,14 @@ safuResultE_t EventBuffer::findEvents(const elosEventFilter_t &filter,
             } else {
                 result = elosEventDeepCopy(event, &this->buffer[idx]);
                 if (result != SAFU_RESULT_OK) {
-                    elosEventDelete(event);
+                    elosEventDeleteMembers(event);
                     safuLogErr("failed to copy event for fetch api call");
                 } else if (safuVecPush(&eventList, event) != 0) {
                     result = SAFU_RESULT_FAILED;
-                    elosEventDelete(event);
+                    elosEventDeleteMembers(event);
                     safuLogErr("failed to add requested event to retun buffer");
                 }
+                free(event);
             }
         } else if (filterResult == RPNFILTER_RESULT_ERROR) {
             safuLogErr("Error fetching event from in memory backend!");
