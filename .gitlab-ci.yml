@@ -38,7 +38,7 @@ build-dependencies:
   stage: build
   needs: []
   script:
-    - ci/install_deps.py --no-tests --no-mocks
+    - ci/install_deps.py --no-tests --no-mocks --verbose
   artifacts:
     paths:
       - build/deps/
