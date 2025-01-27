@@ -59,6 +59,7 @@ safuResultE_t EventBuffer::pushEvent(const elosEvent_t &event) noexcept {
     return result;
 }
 safuResultE_t EventBuffer::findEvents(const elosEventFilter_t &filter,
+        const std::timespec &newest, const std::timespec &oldest,
         safuVec_t &eventList) const noexcept {
     safuResultE_t result = SAFU_RESULT_OK;
     if (SIZE_MAX == this->end) {
@@ -68,7 +69,7 @@ safuResultE_t EventBuffer::findEvents(const elosEventFilter_t &filter,
     size_t idx = this->start;
     do {
         elosRpnFilterResultE_t filterResult;
-        filterResult = elosEventFilterExecute(&filter, nullptr, &this->buffer[idx]);
+        filterResult = elosEventFilterExecuteInTimeRange(&filter, nullptr, &newest, &oldest, &this->buffer[idx]);
         if (filterResult == RPNFILTER_RESULT_MATCH) {
             result = elosEventVectorPushDeepCopy(&eventList, &this->buffer[idx]);
             if (result != SAFU_RESULT_OK) {

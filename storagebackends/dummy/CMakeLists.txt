@@ -17,7 +17,7 @@ set(ELOSD_BACKEND_PATH ${CMAKE_INSTALL_FULL_LIBDIR}/elos/backend)
 
 find_package(safu 0.54.0 REQUIRED)
 find_package(samconf 0.53.1 REQUIRED)
-find_package(libelosplugin 0.58.4 REQUIRED)
+find_package(libelosplugin 1.1.1 REQUIRED)
 
 add_library(backend_dummy SHARED private/dummyBackend.c)
 
