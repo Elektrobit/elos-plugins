@@ -8,6 +8,8 @@ import multiprocessing
 import argparse
 import sys
 
+verbose_log = False
+
 BASE_DIR = path.abspath(path.join(path.dirname(path.abspath(__file__)), '..'))
 CHECKOUT_PATH = path.join(BASE_DIR, "build/deps/src")
 BUILD_PATH = path.join(BASE_DIR, "build/deps/build")
@@ -15,7 +17,6 @@ INSTALL_PATH = path.join(BASE_DIR, "build/deps")
 DEFAULT_USER_CONFIG = path.join(BASE_DIR, "dependencies.json")
 TEST_DEPS = []
 DEPS = ["safu", "samconf", "elos"]
-
 
 def dependency_sources(user_config=DEFAULT_USER_CONFIG):
     defaults = path.join(BASE_DIR, "ci/dependencies_default.json")
@@ -41,7 +42,9 @@ def get_with_priority(config, *keys):
 def run_cmd(cmd):
     print(*cmd)
     expanded_cmd = [os.path.expandvars(x) for x in cmd]
-    return subprocess.run(expanded_cmd)
+    err = None if verbose_log else subprocess.DEVNULL
+    out = None if verbose_log else subprocess.DEVNULL
+    return subprocess.run(expanded_cmd, stdout=out, stderr=err)
 
 
 def checkout(dependencies, args):
@@ -64,6 +67,7 @@ def checkout(dependencies, args):
                 cp = run_cmd(cmd)
                 if cp.returncode != 0:
                     return False
+                print("")
                 continue
             cmd = ["git", "clone", conf["url"], conf["path"]]
             ref = get_with_priority(conf, "tag", "branch")
@@ -80,6 +84,7 @@ def checkout(dependencies, args):
                     return False
         else:
             print("nothing to do for local repository!")
+        print("")
     return True
 
 
@@ -128,6 +133,7 @@ def build_and_install(dependencies, args):
     for dependency in deps:
         if not single_install(dependency, dependencies[dependency], args):
             return False
+        print("")
     return True
 
 
@@ -150,11 +156,14 @@ def arguments():
                         help="run cmake with CI flag")
     parser.add_argument('--clean-first', action='store_true',
                         help="clean cmake caches first")
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help="enable verbose output")
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = arguments()
+    verbose_log = args.verbose
     deps = dependency_sources(user_config=args.config)
     print("# Checkout")
     if not checkout(deps, args):
