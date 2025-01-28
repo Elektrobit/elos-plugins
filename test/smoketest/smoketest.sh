@@ -205,28 +205,28 @@ smoketest_cpp_in_memory_backend() {
     TEST_RESULT=0
 
     log "check if C++ Backend Plugin was loaded"
-    grep -q "CPlusPlusBackend.* has been loaded" "${LOG_ELOSD}"
+    grep -q "fetchapi.* has been loaded" "${LOG_ELOSD}"
     if [ $? -ne 0 ]; then
         log_err "couldn't load C++ Backend Plugin"
         TEST_RESULT=1
     fi
 
     log "check if C++ Backend Plugin was started"
-    grep -q "CPlusPlusBackend.* has been started" "${LOG_ELOSD}"
+    grep -q "fetchapi.* has been started" "${LOG_ELOSD}"
     if [ $? -ne 0 ]; then
         log_err "couldn't start C++ Backend Plugin"
         TEST_RESULT=1
     fi
 
     log "check if C++ Backend Plugin was stopped"
-    grep -q "Stopping Plugin .*CPlusPlusBackend" "${LOG_ELOSD}"
+    grep -q "Stopping Plugin .*fetchapi" "${LOG_ELOSD}"
     if [ $? -ne 0 ]; then
         log_err "couldn't stop C++ Backend Plugin"
         TEST_RESULT=1
     fi
 
     log "check if C++ Backend Plugin was unloaded"
-    grep -q "Unloading Plugin.*CPlusPlusBackend" "${LOG_ELOSD}"
+    grep -q "Unloading Plugin.*fetchapi" "${LOG_ELOSD}"
     if [ $? -ne 0 ]; then
         log_err "couldn't unload C++ Backend Plugin"
         TEST_RESULT=1
