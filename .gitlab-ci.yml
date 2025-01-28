@@ -33,6 +33,8 @@ default:
       python3
     - echo -e "\e[0Ksection_end:`date +%s`:install_packages\r\e[0K"
     - env | sort
+  tags:
+    - "docker"
       
 build-dependencies:
   stage: build
