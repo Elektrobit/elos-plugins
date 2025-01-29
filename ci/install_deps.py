@@ -59,17 +59,16 @@ def single_checkout(dependency, config, args):
                 cp = run_cmd(cmd)
                 if cp.returncode != 0:
                     return False
-            if kind == "branch":
-                cmd = ["git", "-C", config["path"], "switch", ref]
-                cp = run_cmd(cmd)
-                if cp.returncode != 0:
-                    return False
-            if kind in ["tag", "commit"]:
-                cmd = ["git", "-C", config["path"], "checkout", ref]
-                cp = run_cmd(cmd)
-                if cp.returncode != 0:
-                    return False
-            else:
+            cmd = ["git", "-C", config["path"]]
+            match kind:
+                case "branch":
+                    cmd.extend(["switch", ref])
+                case "tag" | "commit":
+                    cmd.extend(["checkout", ref])
+            cp = run_cmd(cmd)
+            if cp.returncode != 0:
+                return False
+            if kind in [None, "branch"]:
                 cmd = ["git", "-C", config["path"], "pull"]
                 cp = run_cmd(cmd)
                 if cp.returncode != 0:
