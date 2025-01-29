@@ -14,3 +14,7 @@ __pycache__
 .asciidoctorconfig.adoc
 **/build
 compile_commands.json
+
+# rust
+**/target
+**/Cargo.lock
