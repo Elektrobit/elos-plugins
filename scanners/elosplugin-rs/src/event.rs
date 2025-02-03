@@ -11,7 +11,7 @@ use std::{
 
 const HARDWARE_ID_FILE: &str = "/etc/machine-id";
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EventSource {
     app_name: Option<String>,
     file_name: Option<String>,
@@ -42,7 +42,7 @@ impl EventSource {
 
 bitflags! {
     /// the bitflags for the elos event classification
-    #[derive(Debug, Copy, Clone, Default)]
+    #[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
     pub struct Classification: u64 {
         const Undefined     = 0x0000000000000000;
         const Kernel        = 0x0000000000000001;
@@ -69,7 +69,7 @@ bitflags! {
 
 /// the elos severity level
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EventSeverity {
     #[default]
     Off = 0,
@@ -82,7 +82,7 @@ pub enum EventSeverity {
 }
 
 /// a safe elos Event representation
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Event {
     date: Option<SystemTime>,
     source: Option<EventSource>,
@@ -104,6 +104,11 @@ impl Event {
     /// sets the payload string
     pub fn payload(mut self, pay: String) -> Event {
         self.payload = Some(pay);
+        self
+    }
+    /// set the message code
+    pub fn message_code(mut self, code: u32) -> Event {
+        self.message_code = Some(code);
         self
     }
     /// sets the severity

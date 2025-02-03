@@ -26,6 +26,8 @@ use std::{
     time::Duration,
 };
 
+const ELOS_MSG_CODE_DEBUG_LOG: u32 = 1101;
+
 #[derive(Debug, Clone)]
 struct Plgn {
     running: Arc<(Mutex<bool>, Condvar)>,
@@ -61,6 +63,8 @@ impl Plugin for Plgn {
     }
     fn stop(&mut self) -> SafuResult {
         println!("Stoping RustScannerPlugin!");
+        assert_eq!(self.data_n_stuff, 4);
+        self.data_n_stuff = 69;
         let (lock, cvar) = &*self.running;
         let mut run = match lock.lock() {
             Ok(r) => r,
@@ -78,7 +82,7 @@ impl Plugin for Plgn {
         };
         *run = true;
         println!("Starting RustScannerPlugin!");
-        //assert_eq!(self.data_n_stuff, 42);
+        assert_eq!(self.data_n_stuff, 42);
         self.data_n_stuff = 4;
         let publ = api.create_publisher();
         'scan: loop {
@@ -98,7 +102,9 @@ impl Plugin for Plgn {
             let ev = match &self.hardware_id {
                 Some(id) => ev.with_hardware_id(id.clone()),
                 None => ev,
-            }.severity(self.next_sever()).source(source).add_classification(Classification::User0);
+            }.severity(self.next_sever()).source(source)
+            .add_classification(Classification::User0)
+            .message_code(ELOS_MSG_CODE_DEBUG_LOG);
 
             publ.publish(&ev);
             api.store(&ev);
@@ -110,7 +116,7 @@ impl Plugin for Plgn {
 impl Drop for Plgn {
     fn drop(&mut self) {
         println!("Unloding RustScannerPlugin!");
-        //assert_eq!(self.data_n_stuff, 69);
+        assert_eq!(self.data_n_stuff, 69);
     }
 }
 
