@@ -8,6 +8,8 @@ import multiprocessing
 import argparse
 import sys
 
+verbose_log = False
+
 BASE_DIR = path.abspath(path.join(path.dirname(path.abspath(__file__)), '..'))
 CHECKOUT_PATH = path.join(BASE_DIR, "build/deps/src")
 BUILD_PATH = path.join(BASE_DIR, "build/deps/build")
@@ -15,7 +17,6 @@ INSTALL_PATH = path.join(BASE_DIR, "build/deps")
 DEFAULT_USER_CONFIG = path.join(BASE_DIR, "dependencies.json")
 TEST_DEPS = []
 DEPS = ["safu", "samconf", "elos"]
-
 
 def dependency_sources(user_config=DEFAULT_USER_CONFIG):
     defaults = path.join(BASE_DIR, "ci/dependencies_default.json")
@@ -34,52 +35,71 @@ def dependency_sources(user_config=DEFAULT_USER_CONFIG):
 def get_with_priority(config, *keys):
     for key in keys:
         if key in config:
-            return config[key]
-    return None
+            return key, config[key]
+    return None, None
 
 
 def run_cmd(cmd):
     print(*cmd)
     expanded_cmd = [os.path.expandvars(x) for x in cmd]
-    return subprocess.run(expanded_cmd)
+    err = None if verbose_log else subprocess.DEVNULL
+    out = None if verbose_log else subprocess.DEVNULL
+    return subprocess.run(expanded_cmd, stdout=out, stderr=err)
+
+
+def single_checkout(dependency, config, args):
+    repo_path = path.join(CHECKOUT_PATH, dependency)
+    print(f"## {dependency}")
+    if "path" not in config:
+        config["path"] = repo_path
+        kind, ref = get_with_priority(config, "commit", "tag", "branch")
+        if path.exists(repo_path):
+            if kind is not None:
+                cmd = ["git", "-C", config["path"], "fetch", "--tags"]
+                cp = run_cmd(cmd)
+                if cp.returncode != 0:
+                    return False
+            cmd = ["git", "-C", config["path"]]
+            match kind:
+                case "branch":
+                    cmd.extend(["switch", ref])
+                case "tag" | "commit":
+                    cmd.extend(["checkout", ref])
+            cp = run_cmd(cmd)
+            if cp.returncode != 0:
+                return False
+            if kind in [None, "branch"]:
+                cmd = ["git", "-C", config["path"], "pull"]
+                cp = run_cmd(cmd)
+                if cp.returncode != 0:
+                    return False
+        else:
+            cmd = ["git", "clone", config["url"], config["path"]]
+            if kind in ["branch", "tag"]:
+                cmd.append("-b")
+                cmd.append(ref)
+            cp = run_cmd(cmd)
+            if cp.returncode != 0:
+                return False
+            if kind == "commit":
+                cmd = ["git", "-C", config["path"], "checkout", config["commit"]]
+                cp = run_cmd(cmd)
+                if cp.returncode != 0:
+                    return False
+    else:
+        print("nothing to do for local repository!")
+
+    return True
 
 
 def checkout(dependencies, args):
     for dep, conf in dependencies.items():
         if dep in TEST_DEPS and args.no_tests:
             continue
-        repo_path = path.join(CHECKOUT_PATH, dep)
-        print(f"## {dep}")
-        if "path" not in conf:
-            conf["path"] = repo_path
-            if path.exists(repo_path):
-                cmd = ["git", "-C", conf["path"], "fetch"]
-                cp = run_cmd(cmd)
-                if cp.returncode != 0:
-                    return False
-                cmd = ["git", "-C", conf["path"], "checkout"]
-                ref = get_with_priority(conf, "commit", "tag", "branch")
-                if ref is not None:
-                    cmd.append(ref)
-                cp = run_cmd(cmd)
-                if cp.returncode != 0:
-                    return False
-                continue
-            cmd = ["git", "clone", conf["url"], conf["path"]]
-            ref = get_with_priority(conf, "tag", "branch")
-            if ref is not None:
-                cmd.append("-b")
-                cmd.append(ref)
-            cp = run_cmd(cmd)
-            if cp.returncode != 0:
-                return False
-            if "commit" in conf:
-                cmd = ["git", "-C", conf["path"], "checkout", conf["commit"]]
-                cp = run_cmd(cmd)
-                if cp.returncode != 0:
-                    return False
-        else:
-            print("nothing to do for local repository!")
+        if not single_checkout(dep, conf, args):
+            print(f"Failed to checkout the right version of {dep}")
+            return False
+        print("")
     return True
 
 
@@ -128,6 +148,7 @@ def build_and_install(dependencies, args):
     for dependency in deps:
         if not single_install(dependency, dependencies[dependency], args):
             return False
+        print("")
     return True
 
 
@@ -150,11 +171,14 @@ def arguments():
                         help="run cmake with CI flag")
     parser.add_argument('--clean-first', action='store_true',
                         help="clean cmake caches first")
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help="enable verbose output")
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = arguments()
+    verbose_log = args.verbose
     deps = dependency_sources(user_config=args.config)
     print("# Checkout")
     if not checkout(deps, args):

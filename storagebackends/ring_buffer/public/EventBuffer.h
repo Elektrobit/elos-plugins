@@ -6,6 +6,7 @@
 #include <memory>
 #include <safu/result.h>
 #include <safu/vector_types.h>
+#include <ctime>
 
 class EventBuffer {
 	private:
@@ -23,5 +24,6 @@ class EventBuffer {
 		EventBuffer(EventBuffer&& buff) = delete;
 		safuResultE_t pushEvent(const elosEvent_t &event) noexcept;
 		safuResultE_t findEvents(const elosRpnFilter_t &filter,
+				const std::timespec &newest, const std::timespec &oldest,
 				safuVec_t &eventList) const noexcept;
 };
