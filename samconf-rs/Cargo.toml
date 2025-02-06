@@ -1,0 +1,10 @@
+[package]
+name = "samconf-rs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "samconf"
+
+[dependencies]
+samconf-sys = { path = "samconf-sys" }
