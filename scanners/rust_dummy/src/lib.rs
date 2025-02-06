@@ -21,9 +21,7 @@ use elosplugin::{
 };
 
 use std::{
-    time::SystemTime,
-    sync::{Arc, Condvar, Mutex},
-    time::Duration,
+    sync::{Arc, Condvar, Mutex}, time::{Duration, SystemTime}
 };
 
 const ELOS_MSG_CODE_DEBUG_LOG: u32 = 1101;
@@ -52,7 +50,7 @@ impl Plgn {
 }
 
 impl Plugin for Plgn {
-    fn load() -> Plgn {
+    fn load(_api: &ElosPluginApi<Plgn>) -> Plgn {
         println!("Loading RustScannerPlugin!");
         Plgn {
             running: Arc::new((Mutex::new(false), Condvar::new())),
@@ -74,7 +72,7 @@ impl Plugin for Plgn {
         cvar.notify_all();
         SafuResult::Ok
     }
-    fn run<Plgn>(&mut self, api: &ElosPluginApi<Plgn>) -> SafuResult {
+    fn run(&mut self, api: &ElosPluginApi<Plgn>) -> SafuResult {
         let (lock, cvar) = &*self.running.clone();
         let mut run = match lock.lock() {
             Ok(r) => r,

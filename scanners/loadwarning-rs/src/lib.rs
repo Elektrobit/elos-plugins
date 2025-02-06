@@ -122,7 +122,7 @@ impl LoadScanner {
 }
 
 impl Plugin for LoadScanner {
-    fn load() -> LoadScanner {
+    fn load(_api: &ElosPluginApi<LoadScanner>) -> LoadScanner {
         let thresholds = vec![1.0, 3.0, 5f64, 7f64, 9.0];
         LoadScanner {
             source: EventSource::new().app("LoadScanner".to_owned()),
@@ -145,7 +145,7 @@ impl Plugin for LoadScanner {
         cvar.notify_all();
         SafuResult::Ok
     }
-    fn run<LoadScanner>(&mut self, api: &ElosPluginApi<LoadScanner>) -> SafuResult {
+    fn run(&mut self, api: &ElosPluginApi<LoadScanner>) -> SafuResult {
         let (lock, cvar) = &*self.running.clone();
         let mut run = match lock.lock() {
             Ok(r) => r,

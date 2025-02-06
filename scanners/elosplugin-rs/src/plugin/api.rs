@@ -10,12 +10,16 @@ use libc::{
     eventfd_read,
     eventfd_write,
 };
+use samconf::{
+    self,
+    ffi::samconfConfig,
+};
 
 /// a wrapper around the plugin context given by elosd
 #[repr(C)]
 #[derive(Debug)]
-pub struct ElosPluginApi<T> {
-    config: *const SamconfConfig,
+pub struct ElosPluginApi<T: Sized> {
+    config: *const samconfConfig,
     use_env: bool,
     id: u32,
     data: *mut T,
@@ -39,6 +43,11 @@ impl<'api, T> ElosPluginApi<T> {
     pub fn init(&mut self, plug: T) {
         let plg = Box::new(plug);
             self.data = Box::into_raw(plg);
+    }
+    pub fn config(&'api self) -> samconf::Config<'api> {
+        unsafe {
+            samconf::Config::new(&*self.config)
+        }
     }
     /// gets a reference to the plugin instance
     pub fn plugin(&self) -> &T {
