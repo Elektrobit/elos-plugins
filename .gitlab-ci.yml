@@ -1,46 +1,52 @@
 
 variables:
   SOURCES_URI: "https://github.com/Elektrobit/"
-  ELOS_DEPENDENCY_CONFIG: "ci/dependencies_emlix.json" 
-
-stages:
-  - build
-  - test
+  ELOS_DEPENDENCY_CONFIG: "ci/dependencies_emlix.json"
+  DOCKER_IMAGE: elos-ci:$CI_COMMIT_REF_SLUG
+  DOCKER_HOST: "tcp://docker:2375"
 
 workflow:
   auto_cancel:
     on_new_commit: interruptible
 
+stages:
+  - docker-image
+  - build
+  - test
+
 default:
-  image: ubuntu:jammy
-  interruptible: true
-  before_script:
-    - echo -e "\e[0Ksection_start:`date +%s`:install_packages\r\e[0KInstall packages"
-    - apt-get update
-    - apt-get install -y
-      build-essential
-      cargo
-      cmake
-      git
-      libesmtp-dev
-      libjson-c-dev
-      liblog4c-dev
-      libmnl-dev
-      libsqlite3-dev
-      libssl-dev
-      net-tools
-      ninja-build
-      pkg-config
-      python3
-      rustc
-    - echo -e "\e[0Ksection_end:`date +%s`:install_packages\r\e[0K"
-    - env | sort
+  image: $CI_REGISTRY_IMAGE/$DOCKER_IMAGE
+  services:
+    - name: docker:24-dind
+      alias: docker
+      variables:
+        DOCKER_TLS_CERTDIR: ""
   tags:
-    - "docker"
+      - "docker"
+  interruptible: true
+
+before_script:
+  - env | sort
+
+build-docker-image:
+  stage: docker-image
+  image: ubuntu:jammy
+  before_script:
+    - apt-get update
+    - apt-get install -y docker.io
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build -t $DOCKER_IMAGE -f ci/Dockerfile
+             --build-arg UID=$(id -u) --build-arg GID=$(id -g)
+             --build-arg ASMCOV_URI="$ASMCOV_URI"
+             ci/
+    - docker tag $DOCKER_IMAGE $CI_REGISTRY_IMAGE/$DOCKER_IMAGE
+    - docker push $CI_REGISTRY_IMAGE/$DOCKER_IMAGE
       
 build-dependencies:
   stage: build
-  needs: []
+  needs:
+    - build-docker-image
   script:
     - ci/install_deps.py --no-tests --no-mocks --verbose
   artifacts:
@@ -53,6 +59,7 @@ build-dependencies:
 build-plugins-release:
   stage: build
   needs:
+    - build-docker-image
     - build-dependencies
   script:
     - ci/build.sh Release
@@ -63,6 +70,7 @@ build-plugins-release:
 build-plugins-debug:
   stage: build
   needs:
+    - build-docker-image
     - build-dependencies
   script:
     - ci/build.sh Debug
@@ -73,6 +81,7 @@ build-plugins-debug:
 smoketests-release:
   stage: test
   needs:
+    - build-docker-image
     - build-dependencies
     - build-plugins-release
   script:
