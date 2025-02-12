@@ -70,7 +70,15 @@
                     "HighLoadWarning": {
                         "File": "scanner_load_warning.so",
                         "Run": "always",
-                        "Config": { }
+                        "Config": {
+                            "Interval": { "Seconds": 1, "MilliSeconds": 0, "MicroSeconds": 0, "NanoSeconds": 0 },
+                            "AvgTimeframe": "One",
+                            "Thresholds": {
+                                "Info": [0.4,1,2,3],
+                                "Warn": [4.0,5,6.0,7]
+                            },
+                            "Epsilon": 0.1
+                        }
                     }
                 }
             }

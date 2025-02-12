@@ -10,3 +10,4 @@ crate-type = ["rlib", "cdylib"]
 [dependencies]
 elosplugin = { path = "../elosplugin-rs" }
 libc = "0.2.169"
+samconf-rs = { path = "../../samconf-rs" }

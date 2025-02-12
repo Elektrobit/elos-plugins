@@ -21,3 +21,11 @@ impl LoadAvg {
         }
     }
 }
+
+#[derive(Debug, Copy, Clone, Default)]
+pub(crate) enum AvgTimeframe {
+    #[default]
+    One,
+    Five,
+    Fifteen,
+}

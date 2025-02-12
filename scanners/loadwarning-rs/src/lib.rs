@@ -1,9 +1,14 @@
+mod config_utils;
 mod load_avg;
 mod interval;
 
 use crate::{
+    config_utils::{
+        get_interval_from_config,
+        get_threasholds_and_warning_level,
+    },
     interval::Interval,
-    load_avg::LoadAvg,
+    load_avg::{LoadAvg, AvgTimeframe},
 };
 use elosplugin::{
     event::{self, Classification, Event, EventSeverity, EventSource},
@@ -11,10 +16,9 @@ use elosplugin::{
     plugin::{api::ElosPluginApi, type_wraps::SafuResult, ElosPluginConfig, Plugin, PluginType},
     start_plugin, stop_plugin, unload_plugin,
 };
-
+use samconf::Config;
 use std::{
-    sync::{Arc, Condvar, Mutex},
-    time::Duration,
+    sync::{Arc, Condvar, Mutex}, time::Duration
 };
 
 const ELOS_MSG_CODE_HIGH_SYSTEM_LOAD: u32 = 1201;
@@ -25,6 +29,7 @@ struct LoadScanner {
     source: EventSource,
     running: Arc<(Mutex<bool>, Condvar)>,
     hardware_id: Option<String>,
+    avg_timeframe: AvgTimeframe,
     interval: Duration,
     bucket: Interval,
     thresholds: Vec<f64>,
@@ -39,11 +44,10 @@ impl LoadScanner {
         }
         let mut l = 0;
         let mut r = self.thresholds.len() - 1;
-        let t = load;
-        if self.thresholds[l] > t {
+        if self.thresholds[l] > load {
             return Interval::Bottom(self.thresholds[l]);
         }
-        if self.thresholds[r] < t {
+        if self.thresholds[r] < load {
             return Interval::Top(self.thresholds[r]);
         }
         if l == r {
@@ -51,9 +55,9 @@ impl LoadScanner {
         }
         while r - l > 1 {
             let i = (r + l) / 2;
-            if self.thresholds[i] > t {
+            if self.thresholds[i] > load {
                 r = i;
-            } else if self.thresholds[i] <= t {
+            } else if self.thresholds[i] <= load {
                 l = i;
             }
         }
@@ -119,20 +123,47 @@ impl LoadScanner {
             None
         }
     }
+    fn scan(&mut self) -> Option<Event> {
+        let load = LoadAvg::get();
+        let load_val = match self.avg_timeframe {
+            AvgTimeframe::One => load.one,
+            AvgTimeframe::Five => load.five,
+            AvgTimeframe::Fifteen => load.fifteen,
+        };
+        self.build_new_event(load_val)
+    }
 }
 
 impl Plugin for LoadScanner {
-    fn load(_api: &ElosPluginApi<LoadScanner>) -> LoadScanner {
-        let thresholds = vec![1.0, 3.0, 5f64, 7f64, 9.0];
+    fn load(api: &ElosPluginApi<LoadScanner>) -> LoadScanner {
+        let conf = api.config();
+        let source = conf.key().unwrap_or("LoadScanner");
+        let avg_timeframe = match conf.get("Config/AvgTimeframe") {
+            Config::String(s) => match s.value() {
+                "One" => AvgTimeframe::One,
+                "Five" => AvgTimeframe::Five,
+                "Fifteen" => AvgTimeframe::Fifteen,
+                _ => AvgTimeframe::default(),
+            },
+            _ => AvgTimeframe::default(),
+        };
+        let interval = get_interval_from_config(&conf.get("Config/Interval"));
+        let epsilon = match conf.get("Config/Epsilon") {
+            Config::Real(r) => r.value(),
+            Config::Int(i) => i.value() as f64,
+            _ => 0.1,
+        };
+        let (warning, thresholds) = get_threasholds_and_warning_level(&conf.get("Config/Thresholds"));
         LoadScanner {
-            source: EventSource::new().app("LoadScanner".to_owned()),
+            source: EventSource::new().app(source.to_owned()),
             running: Arc::new((Mutex::new(false), Condvar::new())),
             hardware_id: event::get_hardware_id(),
-            interval: Duration::from_secs(1),
             bucket: if thresholds.is_empty() { Interval::Empty } else { Interval::Bottom(thresholds[0]) },
+            avg_timeframe,
+            interval,
             thresholds,
-            warning: Some(5f64),
-            epsilon: 0.1,
+            warning,
+            epsilon,
         }
     }
     fn stop(&mut self) -> SafuResult {
@@ -146,6 +177,9 @@ impl Plugin for LoadScanner {
         SafuResult::Ok
     }
     fn run(&mut self, api: &ElosPluginApi<LoadScanner>) -> SafuResult {
+        if self.thresholds.is_empty() {
+            return SafuResult::Ok;
+        }
         let (lock, cvar) = &*self.running.clone();
         let mut run = match lock.lock() {
             Ok(r) => r,
@@ -165,8 +199,7 @@ impl Plugin for LoadScanner {
                 break 'scan;
             }
 
-            let load = LoadAvg::get();
-            if let Some(ev) = self.build_new_event(load.one) {
+            if let Some(ev) = self.scan() {
                 publ.publish(&ev);
                 api.store(&ev);
             }
