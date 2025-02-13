@@ -1,0 +1,15 @@
+[package]
+name = "elosplugin"
+version = "0.2.1"
+edition = "2021"
+
+[lib]
+name = "elosplugin"
+crate-type = ["rlib"]
+
+[lint.rust]
+missing_docs = "warn"
+
+[dependencies]
+libc = "0.2.169"
+bitflags = "2.8.0"
