@@ -61,14 +61,12 @@
                 }
             },
             "Scanner": {
-                "Plugins": { },
-                "Shmem": {
-                    "ShmemFile": "scanner_shmem",
-                    "ShmemCreate": true,
-                    "ShmemLogEntries": 16,
-                    "ShmemOffset": 0,
-                    "SemFile": "scanner_shmem_sem",
-                    "SemCreate": true
+                "Plugins": {
+                    "RustScannerDummy": {
+                        "File": "scanner_rust_dummy.so",
+                        "Run": "always",
+                        "Config": { }
+                    }
                 }
             }
         }
