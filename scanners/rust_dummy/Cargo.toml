@@ -1,0 +1,11 @@
+[package]
+name = "rust_dummy"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "scanner_rust_dummy"
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+elosplugin = { path = "../elosplugin-rs" }

@@ -79,98 +79,81 @@ wait_for_elosd_socket() {
     done
 }
 
-smoketest_client_dummy() {
-    prepare_env "client_dummy"
+generic_plugin_test() {
+    local name=$1
+    local load_msg=$2
+    local start_msg=$3
+    local stop_msg=$4
+    local unload_msg=$5
+    local verbose_name=${6:-$name}
+
+    prepare_env "${name}"
 
     LOG_ELOSD="$RESULT_DIR/elosd.log"
-    
+
     log "Starting elosd"
-    elosd > $LOG_ELOSD 2>&1 &
+    elosd > "${LOG_ELOSD}" 2>&1 &
     ELOSD_PID=$!
 
     wait_for_elosd_socket
 
-    log "Stop elosd ($ELOSD_PID)"
-    kill $ELOSD_PID > /dev/null 2>&1
-    wait $ELOSD_PID > /dev/null 2>&1
+    log "Stop elosd (${ELOSD_PID})"
+    kill "${ELOSD_PID}" > /dev/null 2>&1
+    wait "${ELOSD_PID}" > /dev/null 2>&1
 
-    TEST_RESULT=0
-    log "check if Dummy Client Plugin was loaded"
-    grep -q 'Dummy Client Plugin .* has been loaded' "${LOG_ELOSD}"
-    if [ $? -ne 0 ]; then
-        log_err "couldn't load Dummy Client Plugin"
-        TEST_RESULT=1
+    local test_result=0
+    log "check if ${verbose_name} Plugin was loaded"
+    if ! grep -q "${load_msg}" "${LOG_ELOSD}"; then
+        log_err "couldn't load ${verbose_name} Plugin"
+        test_result=1
     fi
 
-    log "check if Dummy Client Plugin was started"
-    grep -q 'Dummy Client Plugin .* has been started' "${LOG_ELOSD}"
-    if [ $? -ne 0 ]; then
-        log_err "couldn't start Dummy Client Plugin"
-        TEST_RESULT=1
+    log "check if ${verbose_name} Plugin was started"
+    if ! grep -q "${start_msg}" "${LOG_ELOSD}"; then
+        log_err "couldn't start ${verbose_name} Plugin"
+        test_result=1
     fi
 
-    log "check if Dummy Client Plugin was stopped"
-    grep -q 'Stopping Dummy Client Plugin' "${LOG_ELOSD}"
-    if [ $? -ne 0 ]; then
-        log_err "couldn't stop Dummy Client Plugin"
-        TEST_RESULT=1
+    log "check if ${verbose_name} Plugin was stopped"
+    if ! grep -q "${stop_msg}" "${LOG_ELOSD}"; then
+        log_err "couldn't stop ${verbose_name} Plugin"
+        test_result=1
     fi
 
-    log "check if Dummy Client Plugin was unloaded"
-    grep -q 'Unloading Dummy Client Plugin' "${LOG_ELOSD}"
-    if [ $? -ne 0 ]; then
-        log_err "couldn't unload Dummy Client Plugin"
-        TEST_RESULT=1
+    log "check if ${verbose_name} Plugin was unloaded"
+    if ! grep -q "${unload_msg}" "${LOG_ELOSD}"; then
+        log_err "couldn't unload ${verbose_name} Plugin"
+        test_result=1
     fi
 
-    return $TEST_RESULT
+    return "${test_result}"
+}
+
+smoketest_rust_scanner() {
+    generic_plugin_test "rust_scanner" \
+        "Loading RustScannerPlugin!" \
+        "Starting RustScannerPlugin!" \
+        "Stoping RustScannerPlugin!" \
+        "Unloding RustScannerPlugin!" \
+        "Rust Dummy Scanner"
+}
+
+smoketest_client_dummy() {
+    generic_plugin_test "client_dummy" \
+        'Dummy Client Plugin .* has been loaded' \
+        'Dummy Client Plugin .* has been started' \
+        'Stopping Dummy Client Plugin' \
+        'Unloading Dummy Client Plugin' \
+        "Dummy Client"
 }
 
 smoketest_backend_dummy() {
-    prepare_env "backend_dummy"
-
-    LOG_ELOSD="$RESULT_DIR/elosd.log"
-
-    log "Starting elosd"
-    elosd > $LOG_ELOSD 2>&1 &
-    ELOSD_PID=$!
-
-    wait_for_elosd_socket
-
-    log "Stop elosd ($ELOSD_PID)"
-    kill $ELOSD_PID > /dev/null 2>&1
-    wait $ELOSD_PID > /dev/null 2>&1
-
-    TEST_RESULT=0
-    log "check if Dummy Backend Plugin was loaded"
-    grep -q "DummyBackend.* has been loaded" "${LOG_ELOSD}"
-    if [ $? -ne 0 ]; then
-        log_err "couldn't load DummyBackend Plugin"
-        TEST_RESULT=1
-    fi
-
-    log "check if Dummy Backend Plugin was started"
-    grep -q "DummyBackend.* has been started" "${LOG_ELOSD}"
-    if [ $? -ne 0 ]; then
-        log_err "couldn't start Dummy Backend Plugin"
-        TEST_RESULT=1
-    fi
-
-    log "check if Dummy Backend Plugin was stopped"
-    grep -q "Stopping Plugin .*DummyBackend" "${LOG_ELOSD}"
-    if [ $? -ne 0 ]; then
-        log_err "couldn't stop Dummy Backend Plugin"
-        TEST_RESULT=1
-    fi
-
-    log "check if Dummy Client Plugin was unloaded"
-    grep -q "Unloading Plugin.*DummyBackend" "${LOG_ELOSD}"
-    if [ $? -ne 0 ]; then
-        log_err "couldn't unload Dummy Backend Plugin"
-        TEST_RESULT=1
-    fi
-
-    return $TEST_RESULT
+    generic_plugin_test "backend_dummy" \
+        "DummyBackend.* has been loaded" \
+        "DummyBackend.* has been started" \
+        "Stopping Plugin .*DummyBackend" \
+        "Unloading Plugin.*DummyBackend" \
+        "Dummy Backend"
 }
 
 smoketest_cpp_in_memory_backend() {
@@ -258,7 +241,7 @@ smoketest_cpp_in_memory_backend() {
         TEST_RESULT=1
     fi
 
-    return $TEST_RESULT
+    return $test_result
 }
 # $1 - test name
 # $2 - (optional) test function - valid options are [test_expect_success|test_expect_failure|test_expect_unstable]
@@ -307,5 +290,6 @@ FAILED_TESTS=0
 call_test "client_dummy" || FAILED_TESTS=$((FAILED_TESTS+1))
 call_test "backend_dummy" || FAILED_TESTS=$((FAILED_TESTS+1))
 call_test "cpp_in_memory_backend" || FAILED_TESTS=$((FAILED_TESTS+1))
+call_test "rust_scanner" || FAILED_TESTS=$((FAILED_TESTS+1))
 
 exit ${FAILED_TESTS}

@@ -57,4 +57,29 @@ re=${PIPESTATUS[0]}
 
 "$BASE_DIR/ci/check_build_log.py" "$RESULT_DIR/build_log.txt"
 
+build_rust_plugin() {
+    local name=$1
+    local src_dir=$2
+    local type=$3
+    local install_dir="${PREFIX_PATH}/lib/elos/${type}"
+    local cargo_options=()
+    local bin_path=""
+    if [[ "${BUILD_TYPE}" == "Release" ]]; then
+        cargo_options+=("--release")
+        bin_path="${src_dir}/target/release/lib${name}.so"
+    else
+        bin_path="${src_dir}/target/debug/lib${name}.so"
+    fi
+    pushd "${src_dir}"
+    cargo build "${cargo_options[@]}"
+    local re=$?
+    mkdir -p "${install_dir}"
+    cp "${bin_path}" "${install_dir}/${name}.so"
+    popd
+    return $re
+}
+
+## build & install scanners/loadwarning-rs
+build_rust_plugin "scanner_rust_dummy" "${BASE_DIR}/scanners/rust_dummy" "scanner"
+
 exit "$re"
