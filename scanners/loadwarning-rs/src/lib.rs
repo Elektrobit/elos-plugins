@@ -222,3 +222,55 @@ static elosPluginConfig: ElosPluginConfig<LoadScanner> = ElosPluginConfig {
     start: start_plugin!(LoadScanner),
     stop: stop_plugin!(LoadScanner),
 };
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn test_instance() -> LoadScanner {
+        LoadScanner {
+            source: EventSource::new().app("Test".to_owned()),
+            running: Arc::new((Mutex::new(false), Condvar::new())),
+            hardware_id: None,
+            avg_timeframe: AvgTimeframe::One,
+            interval: Duration::from_secs(1),
+            bucket: Interval::Bottom(1.0),
+            thresholds: vec![1.0, 2.5, 5.0],
+            warning: Some(2.5),
+            epsilon: 0.2,
+        }
+    }
+
+    #[test]
+    fn bucket_map() {
+        let mut scanner = test_instance();
+        for load_val in [0.5, 0.9, 1.0, 1.1] {
+            assert!(!scanner.is_new(load_val));
+            assert!(scanner.build_new_event(load_val).is_none());
+        }
+        assert!(scanner.is_new(2.0));
+        assert!(scanner.build_new_event(2.0).is_some());
+        for load_val in [0.9, 2.5, 2.6] {
+            assert!(!scanner.is_new(load_val));
+            assert!(scanner.build_new_event(load_val).is_none());
+        }
+        assert!(scanner.build_new_event(3.0).is_some());
+        for load_val in [5.0, 5.1, 4.9] {
+            assert!(!scanner.is_new(load_val));
+            assert!(scanner.build_new_event(load_val).is_none());
+        }
+        assert!(scanner.build_new_event(5.21).is_some());
+        for load_val in [5.0, 6.0, 5.0, 4.9] {
+            assert!(!scanner.is_new(load_val));
+            assert!(scanner.build_new_event(load_val).is_none());
+        }
+        assert!(scanner.build_new_event(2.5).is_some());
+        assert!(scanner.build_new_event(1.0).is_some());
+        for load_val in [0.9, 2.0, 2.6, 1.0, 1.1] {
+            assert!(!scanner.is_new(load_val));
+            assert!(scanner.build_new_event(load_val).is_none());
+        }
+        assert!(scanner.is_new(0.1));
+        assert!(scanner.build_new_event(0.1).is_some());
+    }
+}
