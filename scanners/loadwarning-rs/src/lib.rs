@@ -1,0 +1,191 @@
+mod load_avg;
+mod interval;
+
+use crate::{
+    interval::Interval,
+    load_avg::LoadAvg,
+};
+use elosplugin::{
+    event::{self, Classification, Event, EventSeverity, EventSource},
+    load_plugin,
+    plugin::{api::ElosPluginApi, type_wraps::SafuResult, ElosPluginConfig, Plugin, PluginType},
+    start_plugin, stop_plugin, unload_plugin,
+};
+
+use std::{
+    sync::{Arc, Condvar, Mutex},
+    time::Duration,
+};
+
+const ELOS_MSG_CODE_HIGH_SYSTEM_LOAD: u32 = 1201;
+const ELOS_MSG_CODE_NORMAL_SYSTEM_LOAD: u32 = 1202;
+
+#[derive(Debug, Clone)]
+struct LoadScanner {
+    source: EventSource,
+    running: Arc<(Mutex<bool>, Condvar)>,
+    hardware_id: Option<String>,
+    interval: Duration,
+    bucket: Interval,
+    thresholds: Vec<f64>,
+    warning: Option<f64>,
+    epsilon: f64,
+}
+
+impl LoadScanner {
+    fn find_interval(&self, load: f64) -> Interval {
+        if self.thresholds.is_empty() {
+            return Interval::Empty;
+        }
+        let mut l = 0;
+        let mut r = self.thresholds.len() - 1;
+        let t = load;
+        if self.thresholds[l] > t {
+            return Interval::Bottom(self.thresholds[l]);
+        }
+        if self.thresholds[r] < t {
+            return Interval::Top(self.thresholds[r]);
+        }
+        if l == r {
+            return Interval::Bottom(self.thresholds[l]);
+        }
+        while r - l > 1 {
+            let i = (r + l) / 2;
+            if self.thresholds[i] > t {
+                r = i;
+            } else if self.thresholds[i] <= t {
+                l = i;
+            }
+        }
+        Interval::Segment(self.thresholds[l], self.thresholds[r])
+    }
+    fn find_level(&self, bucket: &Interval) -> EventSeverity {
+        let warn_level = match self.warning {
+            Some(w) => w,
+            None => {
+                return EventSeverity::Info;
+            }
+        };
+        match bucket {
+            Interval::Bottom(_) => EventSeverity::Info,
+            Interval::Top(_) => EventSeverity::Warn,
+            Interval::Segment(left, _) if *left >= warn_level => EventSeverity::Warn,
+            _ => EventSeverity::Info,
+        }
+    }
+    fn is_new(&self, load: f64) -> bool {
+        match self.bucket {
+            Interval::Top(t) => t - self.epsilon > load,
+            Interval::Bottom(b) => b + self.epsilon < load,
+            Interval::Segment(b, t) => {
+                t + self.epsilon < load || b - self.epsilon > load
+            }
+            Interval::Empty => false,
+        }
+    }
+    fn build_new_event(&mut self, load: f64) -> Option<Event> {
+        if self.is_new(load) {
+            let bucket = self.find_interval(load);
+            let level = self.find_level(&bucket);
+            let code = if level == EventSeverity::Info {
+                ELOS_MSG_CODE_NORMAL_SYSTEM_LOAD
+            } else {
+                ELOS_MSG_CODE_HIGH_SYSTEM_LOAD
+            };
+            let ev = Event::new()
+                .source(self.source.clone())
+                .add_classification(Classification::Kernel)
+                .severity(level)
+                .message_code(code);
+            let ev = match &self.hardware_id {
+                Some(id) => ev.with_hardware_id(id.clone()),
+                None => ev,
+            };
+            let ev = match bucket {
+                Interval::Empty => return None,
+                Interval::Top(t) => ev.payload(format!("CPU load is above {}", t)),
+                Interval::Bottom(b) => ev.payload(format!("CPU load is below {} again", b)),
+                Interval::Segment(b, t) if self.bucket < load => {
+                    ev.payload(format!("CPU load is above {}, and below {}", b, t))
+                }
+                Interval::Segment(b, t) => ev.payload(format!(
+                    "CPU load below {} againe, but still above {}",
+                    t, b
+                )),
+            };
+            self.bucket = bucket;
+            Some(ev)
+        } else {
+            None
+        }
+    }
+}
+
+impl Plugin for LoadScanner {
+    fn load() -> LoadScanner {
+        let thresholds = vec![1.0, 3.0, 5f64, 7f64, 9.0];
+        LoadScanner {
+            source: EventSource::new().app("LoadScanner".to_owned()),
+            running: Arc::new((Mutex::new(false), Condvar::new())),
+            hardware_id: event::get_hardware_id(),
+            interval: Duration::from_secs(1),
+            bucket: if thresholds.is_empty() { Interval::Empty } else { Interval::Bottom(thresholds[0]) },
+            thresholds,
+            warning: Some(5f64),
+            epsilon: 0.1,
+        }
+    }
+    fn stop(&mut self) -> SafuResult {
+        let (lock, cvar) = &*self.running;
+        let mut run = match lock.lock() {
+            Ok(r) => r,
+            Err(_) => return SafuResult::Failed,
+        };
+        *run = false;
+        cvar.notify_all();
+        SafuResult::Ok
+    }
+    fn run<LoadScanner>(&mut self, api: &ElosPluginApi<LoadScanner>) -> SafuResult {
+        let (lock, cvar) = &*self.running.clone();
+        let mut run = match lock.lock() {
+            Ok(r) => r,
+            Err(_) => return SafuResult::Failed,
+        };
+        *run = true;
+
+        let publ = api.create_publisher();
+        'scan: loop {
+            let res = cvar.wait_timeout(run, self.interval);
+            run = match res {
+                Ok(r) => r,
+                Err(_) => return SafuResult::Failed,
+            }
+            .0;
+            if !(*run) {
+                break 'scan;
+            }
+
+            let load = LoadAvg::get();
+            if let Some(ev) = self.build_new_event(load.one) {
+                publ.publish(&ev);
+                api.store(&ev);
+            }
+        }
+        SafuResult::Ok
+    }
+}
+
+impl Drop for LoadScanner {
+    fn drop(&mut self) {
+    }
+}
+
+#[allow(non_upper_case_globals)]
+#[no_mangle]
+static elosPluginConfig: ElosPluginConfig<LoadScanner> = ElosPluginConfig {
+    plugin_type: PluginType::Scanner,
+    load: load_plugin!(LoadScanner),
+    unload: unload_plugin!(LoadScanner),
+    start: start_plugin!(LoadScanner),
+    stop: stop_plugin!(LoadScanner),
+};

@@ -1,0 +1,12 @@
+[package]
+name = "load-warning"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "scanner_load_warning"
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+elosplugin = { path = "../elosplugin-rs" }
+libc = "0.2.169"

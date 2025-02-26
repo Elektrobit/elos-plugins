@@ -12,3 +12,4 @@ project_set_environment()
 
 add_subdirectory(clients)
 add_subdirectory(storagebackends)
+add_subdirectory(scanners)

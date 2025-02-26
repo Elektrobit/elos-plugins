@@ -66,6 +66,11 @@
                         "File": "scanner_rust_dummy.so",
                         "Run": "always",
                         "Config": { }
+                    },
+                    "HighLoadWarning": {
+                        "File": "scanner_load_warning.so",
+                        "Run": "always",
+                        "Config": { }
                     }
                 }
             }
