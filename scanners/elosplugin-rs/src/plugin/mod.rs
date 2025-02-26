@@ -9,9 +9,9 @@ use type_wraps::SafuResult;
 /// to clean up any resources [drop()] should also be implemented for each plugin
 pub trait Plugin {
     /// constructs the plugin instance
-    fn load() -> Self;
+    fn load(api: &ElosPluginApi<Self>) -> Self where Self: Sized;
     /// run the plugin main loop that handles all the plugin logic
-    fn run<T>(&mut self, api: &ElosPluginApi<T>) -> SafuResult;
+    fn run(&mut self, api: &ElosPluginApi<Self>) -> SafuResult where Self: Sized;
     /// triggers the plugin to stop and shut down gracefully
     fn stop(&mut self) -> SafuResult;
     // INFO:  unload implemented through drop
@@ -74,8 +74,8 @@ pub struct ElosPluginConfig<T> {
 macro_rules! load_plugin {
     ($plugin:ty) => {
         |elos_plugin: *mut ElosPluginApi<$plugin>| -> SafuResult {
-            let plg = <$plugin>::load();
             unsafe {
+                let plg = <$plugin>::load(&*elos_plugin);
                 (*elos_plugin).init(plg);
             }
             SafuResult::Ok

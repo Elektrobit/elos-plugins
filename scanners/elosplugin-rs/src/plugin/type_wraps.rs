@@ -7,7 +7,6 @@ pub enum SafuResult {
     Closed = 2
 }
 
-pub(crate) type SamconfConfig = ::std::os::raw::c_void;
 pub(crate) type ElosPluginControl = ::std::os::raw::c_void;
 pub(crate) type Publisher = ::std::os::raw::c_void;
 pub(crate) type Subscriber = ::std::os::raw::c_void;

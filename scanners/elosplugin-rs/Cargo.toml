@@ -13,3 +13,4 @@ missing_docs = "warn"
 [dependencies]
 libc = "0.2.169"
 bitflags = "2.8.0"
+samconf-rs = { path = "../../samconf-rs" }
